@@ -14,11 +14,23 @@ from time import sleep
 
 warnings.filterwarnings('ignore', category=FutureWarning, module='huggingface_hub')
 
-# Load environment variables
-db_source = '/Users/rohanbadiger/Desktop/ModelV3_Nov2024/db_aruba_vlan'
-PERSIST_DIRECTORY = os.environ.get('PERSIST_DIRECTORY', db_source)
+#&nbsp;Load environment variables
 EMBEDDINGS_MODEL_NAME = os.environ.get("EMBEDDINGS_MODEL_NAME", "all-MiniLM-L6-v2")
 TARGET_SOURCE_CHUNKS = int(os.environ.get('TARGET_SOURCE_CHUNKS', 4))
+db_path = '/Users/rohanbadiger/Desktop/ModelV3_Nov2024/CNX_db'
+
+# Dynamically fetch all directories or specific files within the root path
+def list_databases(root_path):
+    try:
+        # List all directories (or filter for specific files if needed)
+        return [name for name in os.listdir(root_path) 
+                if os.path.isdir(os.path.join(root_path, name))]
+    except Exception as e:
+        st.error(f"Error listing databases: {e}")
+        return []
+
+def get_database_folder(db_name):
+    return os.path.join(db_path, db_name)
 
 template = """
 Give Answer
@@ -46,6 +58,18 @@ def main():
     hide_source = col1.checkbox("Hide source documents", value=False, key="hide_source")
 
     os.environ["GOOGLE_API_KEY"] = ''
+
+    # Fetch the list of database options dynamically
+    db_options = list_databases(db_path)
+    if not db_options:
+        st.warning("No databases found in the root path.")
+    else:
+        default_index = db_options.index('db_nbapi') if 'db_nbapi' in db_options else 0  # Default to 'ST' if present
+        db_opted = st.selectbox("Select DB:", db_options, index=default_index)
+        db_choosen = get_database_folder(db_opted)
+        path = db_choosen.rsplit('/')
+        st.write(f"Selected Database: `{path[-1]}`")
+    PERSIST_DIRECTORY = os.environ.get('PERSIST_DIRECTORY', db_choosen)
     
     uploaded_files = st.file_uploader("Upload Python files", type=["py"], accept_multiple_files=True)
     files_content = {}
@@ -103,9 +127,11 @@ def main():
                 source_label = f"**Source {index}:**"
                 #st.write(source_label)
                 source_path = document.metadata['source']
-                path = source_path.rsplit('/')
-                st.write(f"{source_label} {path[-2]}->{path[-1]}")
-                #st.write(f"{source_label} {source_path}")
+                # path = source_path.rsplit('/')
+                # st.write(f"{source_label} {path[-2]}->{path[-1]}")
+                # st.write(f"{source_label} {source_path}")
+                path = source_path.split("cx-switch-test", 1)[-1]
+                st.write(f"{source_label} cx-switch-test{path}")
                 st.code(document.page_content, language="python")
 
 if __name__ == "__main__":
